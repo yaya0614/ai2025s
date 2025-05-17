@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Scatter Plot with SSIM / LPIPS</title>
+  <title>SSIM vs LPIPS Hover Chart with Images</title>
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <style>
     body {
@@ -10,7 +10,6 @@
       color: white;
       font-family: sans-serif;
     }
-
     .tooltip {
       position: absolute;
       display: none;
@@ -18,30 +17,23 @@
       background: white;
       padding: 8px;
       z-index: 10;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
       border-radius: 10px;
       text-align: center;
     }
-
     .tooltip img {
-      max-width: 200px;
-      max-height: 200px;
-      border-radius: 6px;
+      max-width: 150px;
+      height: auto;
       display: block;
       margin: auto;
     }
-
     .label {
       font-size: 12px;
       fill: black;
     }
-
-    /* ✅ 軸線與刻度文字設為黑色 */
     .axis path,
     .axis line {
       stroke: black;
     }
-
     .axis text {
       fill: black;
       font-size: 12px;
@@ -49,36 +41,34 @@
   </style>
 </head>
 <body>
-  <h2 style="text-align:center;">SSIM vs. LPIPS 圖像分佈圖</h2>
+  <h2 style="text-align:center;">SSIM vs LPIPS Hover Chart with Images</h2>
   <div id="scatter"></div>
   <div class="tooltip" id="tooltip"></div>
 
   <script>
+    // 1. 定義 imageMap
+    const imageMap = {};
+
+    // 2. 畫圖 (使用 d3.csv 載入您的 CSV 檔案)
     d3.csv("results.csv").then(data => {
       data.forEach(d => {
-        d.LPIPS = +d.LPIPS;
         d.SSIM = +d.SSIM;
+        d.LPIPS = +d.LPIPS;
+        // 假設 CSV 中有一欄名為 'Student'，將其作為 imageMap 的鍵，並指向 images 資料夾
+        imageMap[d.Student] = "images/" + d.Student + ".png";
       });
 
       const width = 800, height = 600, margin = 60;
-
       const svg = d3.select("#scatter")
         .append("svg")
         .attr("width", width)
         .attr("height", height)
         .style("background", "white");
 
-      const xScale = d3.scaleLinear()
-        .domain([0.0, 1.0])
-        .range([margin, width - margin]);
-
-      const yScale = d3.scaleLinear()
-        .domain([0.0, 1.0])
-        .range([height - margin, margin]);
-
+      const xScale = d3.scaleLinear().domain([0, d3.max(data, d => d.SSIM) || 1]).range([margin, width - margin]);
+      const yScale = d3.scaleLinear().domain([0, d3.max(data, d => d.LPIPS) || 1]).range([height - margin, margin]);
       const tickValues = d3.range(0.0, 1.01, 0.1).map(d => parseFloat(d.toFixed(1)));
 
-      // 畫點 + 學號
       data.forEach(d => {
         const x = xScale(d.SSIM);
         const y = yScale(d.LPIPS);
@@ -93,7 +83,7 @@
               .style("display", "block")
               .style("left", (event.pageX + 15) + "px")
               .style("top", (event.pageY + 15) + "px")
-              .html(`<img src="images/${d.Student}" alt="${d.Student}"><div>${d.Student}</div>`);
+              .html(`<img src="${imageMap[d.Student]}" alt="${d.Student}"><div>${d.Student}</div>`);
           })
           .on("mouseout", () => {
             d3.select("#tooltip").style("display", "none");
@@ -106,7 +96,6 @@
           .attr("class", "label");
       });
 
-      // X 軸
       svg.append("g")
         .attr("class", "axis")
         .attr("transform", `translate(0,${height - margin})`)
@@ -115,11 +104,9 @@
         .attr("x", width / 2)
         .attr("y", 40)
         .attr("fill", "black")
-        .style("font-size", "14px")
         .style("text-anchor", "middle")
         .text("SSIM");
 
-      // Y 軸
       svg.append("g")
         .attr("class", "axis")
         .attr("transform", `translate(${margin},0)`)
@@ -129,7 +116,6 @@
         .attr("x", -height / 2)
         .attr("y", -40)
         .attr("fill", "black")
-        .style("font-size", "14px")
         .style("text-anchor", "middle")
         .text("LPIPS");
     });
